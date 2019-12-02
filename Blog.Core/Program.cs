@@ -9,6 +9,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using SqlSugar;
 
 namespace Blog.Core
 {
@@ -43,7 +44,7 @@ namespace Blog.Core
                     var configuration = services.GetRequiredService<IConfiguration>();
                     if (configuration.GetSection("AppSettings")["SeedDBEnabled"].ObjToBool() || configuration.GetSection("AppSettings")["SeedDBDataEnabled"].ObjToBool())
                     {
-                        var myContext = services.GetRequiredService<MyContext>();
+                        var myContext = services.GetRequiredService<ISqlSugarClient>();
                         DBSeed.SeedAsync(myContext).Wait();
                     }
                 }

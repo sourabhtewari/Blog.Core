@@ -1,5 +1,6 @@
 ﻿using Blog.Core.Common;
 using Blog.Core.Common.Helper;
+using SqlSugar;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -10,7 +11,7 @@ namespace Blog.Core.Model.Models
     {
         // 这是我的在线demo数据，比较多，且杂乱
         // 国内网络不好的，可以使用这个 gitee 上的地址：https://gitee.com/laozhangIsPhi/Blog.Data.Share/raw/master/BlogCore.Data.json/{0}.tsv
-        private static string GitJsonFileFormat = "https://github.com/anjoy8/Blog.Data.Share/raw/master/BlogCore.Data.json/{0}.tsv";
+        private static string GitJsonFileFormat = "https://gitee.com/laozhangIsPhi/Blog.Data.Share/raw/master/BlogCore.Data.json/{0}.tsv";
 
 
         // 这里我把重要的权限数据提出来的精简版，默认一个Admin_Role + 一个管理员用户，
@@ -23,7 +24,7 @@ namespace Blog.Core.Model.Models
         /// </summary>
         /// <param name="myContext"></param>
         /// <returns></returns>
-        public static async Task SeedAsync(MyContext myContext)
+        public static async Task SeedAsync(ISqlSugarClient sqlSugarClient)
         {
             try
             {
@@ -34,12 +35,12 @@ namespace Blog.Core.Model.Models
 
                 // 注意：这里还是有些问题，比如使用mysql的话，如果通过这个方法创建空数据库，字符串不是utf8的，所以还是手动创建空的数据库吧，然后设置数据库为utf-8，我再和作者讨论一下。
                 // 但是使用SqlServer 和 Sqlite 好像没有这个问题。
-                //myContext.Db.DbMaintenance.CreateDatabase(); 
+                //sqlSugarClient.DbMaintenance.CreateDatabase(); 
                 #endregion
 
 
                 // 创建表
-                myContext.CreateTableByEntity(false,
+                sqlSugarClient.CodeFirst.InitTables(
                     typeof(Advertisement),
                     typeof(BlogArticle),
                     typeof(Guestbook),
@@ -56,9 +57,9 @@ namespace Blog.Core.Model.Models
                     typeof(UserRole));
 
                 // 后期单独处理某些表
-                //myContext.Db.CodeFirst.InitTables(typeof(sysUserInfo));
-                //myContext.Db.CodeFirst.InitTables(typeof(Permission)); 
-                //myContext.Db.CodeFirst.InitTables(typeof(Advertisement));
+                //sqlSugarClient.CodeFirst.InitTables(typeof(sysUserInfo));
+                //sqlSugarClient.CodeFirst.InitTables(typeof(Permission)); 
+                //sqlSugarClient.CodeFirst.InitTables(typeof(Advertisement));
 
                 Console.WriteLine("Database:WMBlog created success!");
                 Console.WriteLine();
@@ -68,9 +69,9 @@ namespace Blog.Core.Model.Models
                     Console.WriteLine("Seeding database...");
 
                     #region BlogArticle
-                    if (!await myContext.Db.Queryable<BlogArticle>().AnyAsync())
+                    if (!await sqlSugarClient.Queryable<BlogArticle>().AnyAsync())
                     {
-                        myContext.GetEntityDB<BlogArticle>().InsertRange(JsonHelper.ParseFormByJson<List<BlogArticle>>(GetNetData.Get(string.Format(GitJsonFileFormat, "BlogArticle"))));
+                        new SimpleClient<BlogArticle>(sqlSugarClient).InsertRange(JsonHelper.ParseFormByJson<List<BlogArticle>>(GetNetData.Get(string.Format(GitJsonFileFormat, "BlogArticle"))));
                         Console.WriteLine("Table:BlogArticle created success!");
                     }
                     else
@@ -79,11 +80,12 @@ namespace Blog.Core.Model.Models
                     }
                     #endregion
 
+                    //sqlSugarClient.ChangeDatabase("2");
 
                     #region Module
-                    if (!await myContext.Db.Queryable<Module>().AnyAsync())
+                    if (!await sqlSugarClient.Queryable<Module>().AnyAsync())
                     {
-                        myContext.GetEntityDB<Module>().InsertRange(JsonHelper.ParseFormByJson<List<Module>>(GetNetData.Get(string.Format(GitJsonFileFormat, "Module"))));
+                        new SimpleClient<Module>(sqlSugarClient).InsertRange(JsonHelper.ParseFormByJson<List<Module>>(GetNetData.Get(string.Format(GitJsonFileFormat, "Module"))));
                         Console.WriteLine("Table:Module created success!");
                     }
                     else
@@ -94,9 +96,9 @@ namespace Blog.Core.Model.Models
 
 
                     #region Permission
-                    if (!await myContext.Db.Queryable<Permission>().AnyAsync())
+                    if (!await sqlSugarClient.Queryable<Permission>().AnyAsync())
                     {
-                        myContext.GetEntityDB<Permission>().InsertRange(JsonHelper.ParseFormByJson<List<Permission>>(GetNetData.Get(string.Format(GitJsonFileFormat, "Permission"))));
+                        new SimpleClient<Permission>(sqlSugarClient).InsertRange(JsonHelper.ParseFormByJson<List<Permission>>(GetNetData.Get(string.Format(GitJsonFileFormat, "Permission"))));
                         Console.WriteLine("Table:Permission created success!");
                     }
                     else
@@ -107,9 +109,9 @@ namespace Blog.Core.Model.Models
 
 
                     #region Role
-                    if (!await myContext.Db.Queryable<Role>().AnyAsync())
+                    if (!await sqlSugarClient.Queryable<Role>().AnyAsync())
                     {
-                        myContext.GetEntityDB<Role>().InsertRange(JsonHelper.ParseFormByJson<List<Role>>(GetNetData.Get(string.Format(GitJsonFileFormat, "Role"))));
+                        new SimpleClient<Role>(sqlSugarClient).InsertRange(JsonHelper.ParseFormByJson<List<Role>>(GetNetData.Get(string.Format(GitJsonFileFormat, "Role"))));
                         Console.WriteLine("Table:Role created success!");
                     }
                     else
@@ -120,9 +122,9 @@ namespace Blog.Core.Model.Models
 
 
                     #region RoleModulePermission
-                    if (!await myContext.Db.Queryable<RoleModulePermission>().AnyAsync())
+                    if (!await sqlSugarClient.Queryable<RoleModulePermission>().AnyAsync())
                     {
-                        myContext.GetEntityDB<RoleModulePermission>().InsertRange(JsonHelper.ParseFormByJson<List<RoleModulePermission>>(GetNetData.Get(string.Format(GitJsonFileFormat, "RoleModulePermission"))));
+                        new SimpleClient<RoleModulePermission>(sqlSugarClient).InsertRange(JsonHelper.ParseFormByJson<List<RoleModulePermission>>(GetNetData.Get(string.Format(GitJsonFileFormat, "RoleModulePermission"))));
                         Console.WriteLine("Table:RoleModulePermission created success!");
                     }
                     else
@@ -133,9 +135,9 @@ namespace Blog.Core.Model.Models
 
 
                     #region Topic
-                    if (!await myContext.Db.Queryable<Topic>().AnyAsync())
+                    if (!await sqlSugarClient.Queryable<Topic>().AnyAsync())
                     {
-                        myContext.GetEntityDB<Topic>().InsertRange(JsonHelper.ParseFormByJson<List<Topic>>(GetNetData.Get(string.Format(GitJsonFileFormat, "Topic"))));
+                        new SimpleClient<Topic>(sqlSugarClient).InsertRange(JsonHelper.ParseFormByJson<List<Topic>>(GetNetData.Get(string.Format(GitJsonFileFormat, "Topic"))));
                         Console.WriteLine("Table:Topic created success!");
                     }
                     else
@@ -146,9 +148,9 @@ namespace Blog.Core.Model.Models
 
 
                     #region TopicDetail
-                    if (!await myContext.Db.Queryable<TopicDetail>().AnyAsync())
+                    if (!await sqlSugarClient.Queryable<TopicDetail>().AnyAsync())
                     {
-                        myContext.GetEntityDB<TopicDetail>().InsertRange(JsonHelper.ParseFormByJson<List<TopicDetail>>(GetNetData.Get(string.Format(GitJsonFileFormat, "TopicDetail"))));
+                        new SimpleClient<TopicDetail>(sqlSugarClient).InsertRange(JsonHelper.ParseFormByJson<List<TopicDetail>>(GetNetData.Get(string.Format(GitJsonFileFormat, "TopicDetail"))));
                         Console.WriteLine("Table:TopicDetail created success!");
                     }
                     else
@@ -159,9 +161,9 @@ namespace Blog.Core.Model.Models
 
 
                     #region UserRole
-                    if (!await myContext.Db.Queryable<UserRole>().AnyAsync())
+                    if (!await sqlSugarClient.Queryable<UserRole>().AnyAsync())
                     {
-                        myContext.GetEntityDB<UserRole>().InsertRange(JsonHelper.ParseFormByJson<List<UserRole>>(GetNetData.Get(string.Format(GitJsonFileFormat, "UserRole"))));
+                       new SimpleClient<UserRole>(sqlSugarClient).InsertRange(JsonHelper.ParseFormByJson<List<UserRole>>(GetNetData.Get(string.Format(GitJsonFileFormat, "UserRole"))));
                         Console.WriteLine("Table:UserRole created success!");
                     }
                     else
@@ -172,9 +174,9 @@ namespace Blog.Core.Model.Models
 
 
                     #region sysUserInfo
-                    if (!await myContext.Db.Queryable<sysUserInfo>().AnyAsync())
+                    if (!await sqlSugarClient.Queryable<sysUserInfo>().AnyAsync())
                     {
-                        myContext.GetEntityDB<sysUserInfo>().InsertRange(JsonHelper.ParseFormByJson<List<sysUserInfo>>(GetNetData.Get(string.Format(GitJsonFileFormat, "sysUserInfo"))));
+                        new SimpleClient<sysUserInfo>(sqlSugarClient).InsertRange(JsonHelper.ParseFormByJson<List<sysUserInfo>>(GetNetData.Get(string.Format(GitJsonFileFormat, "sysUserInfo"))));
                         Console.WriteLine("Table:sysUserInfo created success!");
                     }
                     else

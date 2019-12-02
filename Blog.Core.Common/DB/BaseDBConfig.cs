@@ -1,4 +1,6 @@
-﻿using System.IO;
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
 
 namespace Blog.Core.Common.DB
 {
@@ -20,6 +22,35 @@ namespace Blog.Core.Common.DB
         public static string ConnectionString => InitConn();
         public static DataBaseType DbType = DataBaseType.SqlServer;
 
+        public static List<MutiDBOperate> MutiConnectionString => MutiInitConn();
+
+        private static List<MutiDBOperate> MutiInitConn()
+        {
+            List<MutiDBOperate> mutiDBOperates = new List<MutiDBOperate>();
+
+            if (isSqliteEnabled)
+            {
+                mutiDBOperates.Add(new MutiDBOperate("1", sqliteConnection, DataBaseType.Sqlite));
+            }
+            
+            if (isSqlServerEnabled)
+            {
+                mutiDBOperates.Add(new MutiDBOperate("2", DifDBConnOfSecurity(@"D:\my-file\dbCountPsw1.txt", @"c:\my-file\dbCountPsw1.txt", sqlServerConnection), DataBaseType.SqlServer));
+            }
+            
+            if (isMySqlEnabled)
+            {
+                mutiDBOperates.Add(new MutiDBOperate("3", DifDBConnOfSecurity(@"D:\my-file\dbCountPsw1_MySqlConn.txt", @"c:\my-file\dbCountPsw1_MySqlConn.txt", mySqlConnection), DataBaseType.MySql));
+            }
+            
+            if (IsOracleEnabled)
+            {
+                mutiDBOperates.Add(new MutiDBOperate("4", DifDBConnOfSecurity(@"D:\my-file\dbCountPsw1_OracleConn.txt", @"c:\my-file\dbCountPsw1_OracleConn.txt", oracleConnection), DataBaseType.Oracle));
+            }
+
+            return mutiDBOperates;
+
+        }
 
         private static string InitConn()
         {
@@ -75,5 +106,18 @@ namespace Blog.Core.Common.DB
         Sqlite = 2,
         Oracle = 3,
         PostgreSQL = 4
+    }
+
+    public class MutiDBOperate
+    {
+        public MutiDBOperate(string connId, string conn, DataBaseType dataBaseType)
+        {
+            ConnId = connId;
+            Conn = conn;
+            DbType = dataBaseType;
+        }
+        public string ConnId { get; set; }
+        public string Conn { get; set; }
+        public DataBaseType DbType { get; set; }
     }
 }

@@ -45,39 +45,21 @@ namespace Blog.Core.AuthHelper
 
         // 重写异步处理程序
         protected override async Task HandleRequirementAsync(AuthorizationHandlerContext context, PermissionRequirement requirement)
-        {
-            /*
-             * 
-             * 首先必须在 controller 上进行配置 Authorize ，可以策略授权，也可以角色等基本授权
-             * 
-             * 1、开启公约， startup 中的全局授权过滤公约：o.Conventions.Insert(0, new GlobalRouteAuthorizeConvention());
-             * 
-             * 2、不开启公约，使用 IHttpContextAccessor ，也能实现效果；
-             */
-
-            // 将最新的角色和接口列表更新
-            var data = await RoleModulePermissionServices.GetRoleModule();
-            var list = (from item in data
-                        where item.IsDeleted == false
-                        orderby item.Id
-                        select new PermissionItem
-                        {
-                            Url = item.Module?.LinkUrl,
-                            Role = item.Role?.Name,
-                        }).ToList();
-
-            requirement.Permissions = list;
-
-
-            //从AuthorizationHandlerContext转成HttpContext，以便取出表求信息
-            var filterContext = (context.Resource as Microsoft.AspNetCore.Mvc.Filters.AuthorizationFilterContext);
-            var httpContext = (context.Resource as Microsoft.AspNetCore.Mvc.Filters.AuthorizationFilterContext)?.HttpContext;
-
-            if (httpContext == null)
+        {  
+            var httpContext = _accessor.HttpContext;
+            if (!requirement.Permissions.Any())
             {
-                httpContext = _accessor.HttpContext;
+                var data = await _roleModulePermissionServices.RoleModuleMaps();
+                var list = (from item in data
+                            where item.IsDeleted == false
+                            orderby item.Id
+                            select new PermissionItem
+                            {
+                                Url = item.Module?.LinkUrl,
+                                Role = item.Role?.Id.ObjToString(),
+                            }).ToList(); 
+                requirement.Permissions = list;
             }
-
             //请求Url
             if (httpContext != null)
             {
@@ -109,7 +91,7 @@ namespace Blog.Core.AuthHelper
                         {
                             // 获取当前用户的角色信息
                             var currentUserRoles = (from item in httpContext.User.Claims
-                                                    where item.Type == requirement.ClaimType
+                                                    where item.Type == "role"
                                                     select item.Value).ToList();
 
                             var isMatchRole = false;
@@ -140,7 +122,7 @@ namespace Blog.Core.AuthHelper
                         }
                        
                         //判断过期时间（这里仅仅是最坏验证原则，你可以不要这个if else的判断，因为我们使用的官方验证，Token过期后上边的result?.Principal 就为 null 了，进不到这里了，因此这里其实可以不用验证过期时间，只是做最后严谨判断）
-                        if ((httpContext.User.Claims.SingleOrDefault(s => s.Type == ClaimTypes.Expiration)?.Value) != null && DateTime.Parse(httpContext.User.Claims.SingleOrDefault(s => s.Type == ClaimTypes.Expiration)?.Value) >= DateTime.Now)
+                        if ((httpContext.User.Claims.SingleOrDefault(s => s.Type == "exp")?.Value) != null && StampToDateTime(httpContext.User.Claims.SingleOrDefault(s => s.Type == "exp")?.Value) >= DateTime.Now)
                         {
                             context.Succeed(requirement);
                         }
@@ -161,6 +143,17 @@ namespace Blog.Core.AuthHelper
             }
 
             context.Succeed(requirement);
+        }
+
+        private DateTime StampToDateTime(string time)
+        {
+
+            time = time.Substring(0, 10);
+            double timestamp = Convert.ToInt64(time);
+            System.DateTime dateTime = new System.DateTime(1970, 1, 1, 0, 0, 0, 0);
+            dateTime = dateTime.AddSeconds(timestamp).ToLocalTime();
+            return dateTime;
+
         }
     }
 }

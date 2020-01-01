@@ -22,8 +22,13 @@ namespace Blog.Core.AuthHelper
         /// 验证方案提供对象
         /// </summary>
         public IAuthenticationSchemeProvider Schemes { get; set; }
-        private readonly IRoleModulePermissionServices _roleModulePermissionServices;
         private readonly IHttpContextAccessor _accessor;
+
+
+        /// <summary>
+        /// services 层注入
+        /// </summary>
+        public IRoleModulePermissionServices RoleModulePermissionServices { get; set; }
 
         /// <summary>
         /// 构造函数注入
@@ -35,14 +40,26 @@ namespace Blog.Core.AuthHelper
         {
             _accessor = accessor;
             Schemes = schemes;
-            _roleModulePermissionServices = roleModulePermissionServices;
+            this.RoleModulePermissionServices = roleModulePermissionServices;
         }
 
         // 重写异步处理程序
         protected override async Task HandleRequirementAsync(AuthorizationHandlerContext context, PermissionRequirement requirement)
-        {
+        {  
             var httpContext = _accessor.HttpContext;
-
+            if (!requirement.Permissions.Any())
+            {
+                var data = await _roleModulePermissionServices.RoleModuleMaps();
+                var list = (from item in data
+                            where item.IsDeleted == false
+                            orderby item.Id
+                            select new PermissionItem
+                            {
+                                Url = item.Module?.LinkUrl,
+                                Role = item.Role?.Id.ObjToString(),
+                            }).ToList(); 
+                requirement.Permissions = list;
+            }
             //请求Url
             if (httpContext != null)
             {
@@ -65,23 +82,6 @@ namespace Blog.Core.AuthHelper
                     //result?.Principal不为空即登录成功
                     if (result?.Principal != null)
                     {
-                        // 将最新的角色和接口列表更新
-
-                        // 这里暂时把代码移动到了Login获取token的api里,这样就不用每次都请求数据库,造成压力.
-                        // 但是这样有个问题,就是如果修改了某一个角色的菜单权限,不会立刻更新,
-                        // 需要让用户退出重新登录,如果你想实时更新,请把下边的注释打开即可.
-
-                        //var data = await _roleModulePermissionServices.RoleModuleMaps();
-                        //var list = (from item in data
-                        //            where item.IsDeleted == false
-                        //            orderby item.Id
-                        //            select new PermissionItem
-                        //            {
-                        //                Url = item.Module?.LinkUrl,
-                        //                Role = item.Role?.Name,
-                        //            }).ToList();
-                        //requirement.Permissions = list;
-
                         httpContext.User = result.Principal;
 
                         //权限中是否存在请求的url
@@ -91,7 +91,7 @@ namespace Blog.Core.AuthHelper
                         {
                             // 获取当前用户的角色信息
                             var currentUserRoles = (from item in httpContext.User.Claims
-                                                    where item.Type == requirement.ClaimType
+                                                    where item.Type == "role"
                                                     select item.Value).ToList();
 
                             var isMatchRole = false;
@@ -120,9 +120,9 @@ namespace Blog.Core.AuthHelper
                                 return;
                             }
                         }
-
+                       
                         //判断过期时间（这里仅仅是最坏验证原则，你可以不要这个if else的判断，因为我们使用的官方验证，Token过期后上边的result?.Principal 就为 null 了，进不到这里了，因此这里其实可以不用验证过期时间，只是做最后严谨判断）
-                        if ((httpContext.User.Claims.SingleOrDefault(s => s.Type == ClaimTypes.Expiration)?.Value) != null && DateTime.Parse(httpContext.User.Claims.SingleOrDefault(s => s.Type == ClaimTypes.Expiration)?.Value) >= DateTime.Now)
+                        if ((httpContext.User.Claims.SingleOrDefault(s => s.Type == "exp")?.Value) != null && StampToDateTime(httpContext.User.Claims.SingleOrDefault(s => s.Type == "exp")?.Value) >= DateTime.Now)
                         {
                             context.Succeed(requirement);
                         }
@@ -143,6 +143,17 @@ namespace Blog.Core.AuthHelper
             }
 
             context.Succeed(requirement);
+        }
+
+        private DateTime StampToDateTime(string time)
+        {
+
+            time = time.Substring(0, 10);
+            double timestamp = Convert.ToInt64(time);
+            System.DateTime dateTime = new System.DateTime(1970, 1, 1, 0, 0, 0, 0);
+            dateTime = dateTime.AddSeconds(timestamp).ToLocalTime();
+            return dateTime;
+
         }
     }
 }

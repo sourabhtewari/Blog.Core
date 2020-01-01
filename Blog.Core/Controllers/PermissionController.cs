@@ -150,7 +150,7 @@ namespace Blog.Core.Controllers
         public async Task<MessageModel<List<Permission>>> GetTreeTable(int f = 0, string key = "")
         {
             List<Permission> permissions = new List<Permission>();
-            var apiList = await _moduleServices.Query(d => d.IsDeleted == false);
+            var apiList= await _moduleServices.Query(d => d.IsDeleted == false);
             var permissionsList = await _permissionServices.Query(d => d.IsDeleted == false);
             if (string.IsNullOrEmpty(key) || string.IsNullOrWhiteSpace(key))
             {
@@ -159,11 +159,11 @@ namespace Blog.Core.Controllers
 
             if (key != "")
             {
-                permissions = permissionsList.Where(a => a.Name.Contains(key)).OrderBy(a => a.OrderSort).ToList();
+                permissions = permissionsList.Where(a => a.Name.Contains(key)).ToList();
             }
             else
             {
-                permissions = permissionsList.Where(a => a.Pid == f).OrderBy(a => a.OrderSort).ToList();
+                permissions = permissionsList.Where(a => a.Pid == f).ToList();
             }
 
             foreach (var item in permissions)
@@ -351,16 +351,19 @@ namespace Blog.Core.Controllers
 
             // 三种方式获取 uid
             var uidInHttpcontext1 = (from item in _httpContext.HttpContext.User.Claims
-                                     where item.Type == "jti"
+                                     where item.Type == "sub"
                                      select item.Value).FirstOrDefault().ObjToInt();
+            var roleId = (from item in _httpContext.HttpContext.User.Claims
+                          where item.Type == "role"
+                          select item.Value).FirstOrDefault().ObjToInt();
 
             var uidInHttpcontext = (JwtHelper.SerializeJwt(_httpContext.HttpContext.Request.Headers["Authorization"].ObjToString().Replace("Bearer ", "")))?.Uid;
 
             var uName = _user.Name;
 
-            if (uid > 0 && uid == uidInHttpcontext)
+            if (uid > 0 && uid == uidInHttpcontext1)
             {
-                var roleId = ((await _userRoleServices.Query(d => d.IsDeleted == false && d.UserId == uid)).FirstOrDefault()?.RoleId).ObjToInt();
+                //var roleId = ((await _userRoleServices.Query(d => d.IsDeleted == false && d.UserId == uid)).FirstOrDefault()?.RoleId).ObjToInt();
                 if (roleId > 0)
                 {
                     var pids = (await _roleModulePermissionServices.Query(d => d.IsDeleted == false && d.RoleId == roleId)).Select(d => d.PermissionId.ObjToInt()).Distinct();
